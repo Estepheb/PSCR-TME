@@ -23,6 +23,9 @@ bool Banque::comptabiliser (int attendu) const {
 		if (compte.getSolde() < 0) {
 			cout << "Compte " << id << " en négatif : " << compte.getSolde() << endl;
 		}
+		else {
+			cout << "Compte " << id << " en positif : " << compte.getSolde() << endl;
+		}
 		bilan += compte.getSolde();
 		id++;
 	}
