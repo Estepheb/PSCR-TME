@@ -3,6 +3,7 @@
 
 #include <cstdlib>
 #include <mutex>
+#include <condition_variable>
 
 namespace pr {
 
@@ -14,6 +15,9 @@ class Queue {
 	size_t begin;
 	size_t sz;
 	mutable std::mutex m;
+
+	std::condition_variable cv_cons,cv_prod;
+	//	bool block;
 
 	// fonctions private, sans protection mutex
 	bool empty() const {
@@ -33,9 +37,11 @@ public:
 	}
 	T* pop() {
 		std::unique_lock<std::mutex> lg(m);
-		if (empty()) {
+		while (empty()) {
+			cv_cons.wait(lg);
 			return nullptr;
 		}
+		cv_cons.notify_all();
 		auto ret = tab[begin];
 		tab[begin] = nullptr;
 		sz--;
@@ -44,13 +50,24 @@ public:
 	}
 	bool push(T* elt) {
 		std::unique_lock<std::mutex> lg(m);
-		if (full()) {
+		while (full()) {
+			cv_prod.wait(lg);
 			return false;
 		}
+		cv_prod.notify_all();
 		tab[(begin + sz) % allocsize] = elt;
 		sz++;
 		return true;
 	}
+
+	/*void SetBlocking(bool isBlocking){
+		std::unique_lock<std::mutex> lg(m);
+		block = isBlocking;
+		cv.notify_all;
+	}*/
+
+
+
 	~Queue() {
 		// ?? lock a priori inutile, ne pas detruire si on travaille encore avec
 		for (size_t i = 0; i < sz; i++) {
