@@ -4,6 +4,7 @@
 #include <cstdlib>
 #include <mutex>
 #include <condition_variable>
+#include <cstring>
 
 namespace pr {
 
@@ -16,8 +17,8 @@ class Queue {
 	size_t sz;
 	mutable std::mutex m;
 
-	std::condition_variable cv_cons,cv_prod;
-	//	bool block;
+	std::condition_variable l;
+		bool block;
 
 	// fonctions private, sans protection mutex
 	bool empty() const {
@@ -35,13 +36,15 @@ public:
 		std::unique_lock<std::mutex> lg(m);
 		return sz;
 	}
-	T* pop() {
+T* pop() {
 		std::unique_lock<std::mutex> lg(m);
-		while (empty()) {
-			cv_cons.wait(lg);
+		while (empty()and block) {
+			l.wait(lg);
+		}
+		if (empty()) {
 			return nullptr;
 		}
-		cv_cons.notify_all();
+		l.notify_all();
 		auto ret = tab[begin];
 		tab[begin] = nullptr;
 		sz--;
@@ -51,20 +54,19 @@ public:
 	bool push(T* elt) {
 		std::unique_lock<std::mutex> lg(m);
 		while (full()) {
-			cv_prod.wait(lg);
-			return false;
+			l.wait(lg);
 		}
-		cv_prod.notify_all();
 		tab[(begin + sz) % allocsize] = elt;
 		sz++;
+		l.notify_all();
 		return true;
 	}
 
-	/*void SetBlocking(bool isBlocking){
+	void SetBlocking(){
 		std::unique_lock<std::mutex> lg(m);
-		block = isBlocking;
-		cv.notify_all;
-	}*/
+		block = false;
+		l.notify_all();
+	}
 
 
 

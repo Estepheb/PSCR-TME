@@ -12,6 +12,10 @@ using namespace std;
 using namespace pr;
 
 
+
+
+
+
 void fillScene(Scene & scene, default_random_engine & re) {
 	// Nombre de spheres (rend le probleme plus dur)
 	const int NBSPHERES = 250;
@@ -102,6 +106,66 @@ void exportImage(const char * path, size_t width, size_t height, Color * pixels)
 // NB : en francais pour le cours, preferez coder en english toujours.
 // pas d'accents pour eviter les soucis d'encodage
 
+
+
+
+
+class PixelJob : public Job {
+private:
+	void calcul () {
+		for (int  y = 0 ; y < scene.getHeight() ; y++) {
+			// le point de l'ecran par lequel passe ce rayon
+			auto &screenPoint = (screen)[y][x];
+			//cout<<endl<<"screen: "<<x<<"  "<<y<<"    "<<endl;
+			// le rayon a inspecter
+			Rayon  ray(scene.getCameraPos(),screenPoint );
+
+			int targetSphere = findClosestInter(scene, ray);
+
+			if (targetSphere == -1) {
+				// keep background color
+				continue ;
+			} else {
+				const Sphere & obj = *(scene.begin() + targetSphere);
+				// pixel prend la couleur de l'objet
+				Color finalcolor = computeColor(obj, ray, scene.getCameraPos(), lights);
+				// le point de l'image (pixel) dont on vient de calculer la couleur
+				Color & pixel = pixels[y*scene.getHeight() + x];
+				// mettre a jour la couleur du pixel dans l'image finale.
+				pixel = finalcolor;
+				
+			}
+		}
+	}
+	const Scene::screen_t  screen;
+	int x;
+	Scene scene;
+	Color* pixels;
+	vector<Vec3D> lights;
+
+	//Color * ret;
+public :
+	PixelJob(const Scene::screen_t &screen,int x,Scene &scene,Color* &pixels,vector<Vec3D> &lights) : screen(screen),x(x),scene(scene),pixels(pixels),lights(lights) {}
+	void run () {
+		calcul();
+	}
+	~PixelJob(){}
+};
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 int main () {
 
 	std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now();
@@ -126,31 +190,23 @@ int main () {
 	// Les couleurs des pixels dans l'image finale
 	Color * pixels = new Color[scene.getWidth() * scene.getHeight()];
 
+	int nbthreads = 12;
+
+Color a;
+
+	Pool p(150);
+	p.start(nbthreads);
+	
+	cout<<"debut"<<endl;
 	// pour chaque pixel, calculer sa couleur
 	for (int x =0 ; x < scene.getWidth() ; x++) {
-		for (int  y = 0 ; y < scene.getHeight() ; y++) {
-			// le point de l'ecran par lequel passe ce rayon
-			auto & screenPoint = screen[y][x];
-			// le rayon a inspecter
-			Rayon  ray(scene.getCameraPos(), screenPoint);
-
-			int targetSphere = findClosestInter(scene, ray);
-
-			if (targetSphere == -1) {
-				// keep background color
-				continue ;
-			} else {
-				const Sphere & obj = *(scene.begin() + targetSphere);
-				// pixel prend la couleur de l'objet
-				Color finalcolor = computeColor(obj, ray, scene.getCameraPos(), lights);
-				// le point de l'image (pixel) dont on vient de calculer la couleur
-				Color & pixel = pixels[y*scene.getHeight() + x];
-				// mettre a jour la couleur du pixel dans l'image finale.
-				pixel = finalcolor;
-			}
-
-		}
+		cout<<x<<endl;
+		p.submit(new PixelJob( screen,x,scene,pixels,lights));
 	}
+
+	p.stop();
+	cout<<"fin"<<endl;
+	
 
 	std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
 	    std::cout << "Total time "
@@ -161,46 +217,3 @@ int main () {
 
 	return 0;
 }
-
-
-class PixelJob : public Job {
-	Color& calcul () {
-		for (int  y = 0 ; y < scene.getHeight() ; y++) {
-			// le point de l'ecran par lequel passe ce rayon
-			auto & screenPoint = screen[y][x];
-			// le rayon a inspecter
-			Rayon  ray(scene.getCameraPos(), screenPoint);
-
-			int targetSphere = findClosestInter(scene, ray);
-
-			if (targetSphere == -1) {
-				// keep background color
-				continue ;
-			} else {
-				const Sphere & obj = *(scene.begin() + targetSphere);
-				// pixel prend la couleur de l'objet
-				Color finalcolor = computeColor(obj, ray, scene.getCameraPos(), lights);
-				// le point de l'image (pixel) dont on vient de calculer la couleur
-				Color & pixel = pixels[y*scene.getHeight() + x];
-				// mettre a jour la couleur du pixel dans l'image finale.
-				pixel = finalcolor;
-				return pixel ;//Mettre une valeur a return 
-			}
-		}
-	}
-	Scene::screen_t * screen;
-	int x;
-	Scene* scene;
-	Color* pixels;
-	vector<Vec3D>* lights;
-
-
-
-	int * ret;
-public :
-	PixelJob(Scene::screen_t & screen,int x,Scene scene,Color* pixels,vector<Vec3D>* lights, int * ret) : screen(screen),x(x),scene(scene),pixels(pixels),lights(lights), ret(ret) {}
-	void run () {
-		* ret = calcul();
-	}
-	~PixelJob(){}
-};
