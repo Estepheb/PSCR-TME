@@ -7,7 +7,13 @@ using namespace std;
 
 char pv = 3;//Point de vie
 
-void handlerPV(int signum) {
+void coupPare(int signb){
+    cout<<"Coup paré"<<endl;
+}
+
+
+
+void handlerPV(int signb) {
 	pv--;
 	if (!pv) {
 		cout << getpid() << " est mort"<<endl;
@@ -63,8 +69,9 @@ void combat(pid_t adversaire){
     cout<<"Début du combat pour : "<<getpid()<<" contre : "<<adversaire<<endl;
     /*boucle indéfniment sur une défense suivie d'une attaque et invoquez-la dans le corps des deux fils.*/
     while(true){
-        attaque(adversaire);
+        
         defense();
+        attaque(adversaire);
         
 
     }

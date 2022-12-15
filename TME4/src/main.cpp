@@ -1,8 +1,9 @@
 #include "Banque.h"
 
 using namespace std;
-const int NB_THREAD = 10;
-const int NB_COMPTE = 5;
+const int NB_THREAD = 100;
+const int NB_COMPTE = 50;
+const int ARGENT =10;
 
 void exo1_q1 (pr::Banque& b)
 {
@@ -21,22 +22,34 @@ void exo1_q1 (pr::Banque& b)
 }
 
 
-
+void comptabiliserEnBoucle(pr::Banque& b) {
+	while(1) {
+		/*int timesleep = rand()%20;
+		this_thread::sleep_for(chrono::milliseconds(timesleep));*/
+		b.comptabiliser(NB_COMPTE * ARGENT);
+	}
+}
 
 
 int main () {
-	pr::Banque banque(NB_COMPTE,10);
+	pr::Banque banque(NB_COMPTE,ARGENT);
 	vector<thread> threads;
-	banque.comptabiliser(10*NB_COMPTE);
+	time_t t;
+	time(&t);
+	srand(t);
+	banque.comptabiliser(ARGENT*NB_COMPTE);
 	for(int i=0;i<NB_THREAD;i++)
 	{
 		threads.emplace_back(exo1_q1,ref(banque));
 	}
 
+	thread comptable(comptabiliserEnBoucle,ref(banque));
+
 	for (auto & t : threads) {
 		t.join();
 	}
-	banque.comptabiliser(10*NB_COMPTE);
+	comptable.detach();
+	banque.comptabiliser(0);
 	// TODO : tester solde = NB_THREAD * JP
 	return 0;
 }
